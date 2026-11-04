@@ -1,0 +1,60 @@
+# Render Blueprint: deploys the backend and frontend as two Docker web services.
+# The database is external (Neon); set DATABASE_URL when creating the Blueprint.
+# docker-compose.yml is for local use only. Render reads this file instead.
+
+services:
+  # ---------------------------------------------------------------- backend --
+  - type: web
+    name: loan-checker-backend
+    runtime: docker
+    plan: free
+    region: singapore              # same region as the Neon database
+    dockerContext: ./backend
+    dockerfilePath: ./docker/backend.Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: DATABASE_URL          # postgresql+psycopg://...neon.tech/neondb?sslmode=require
+        sync: false
+      - key: AUTO_MIGRATE
+        value: "true"
+      - key: UPLOAD_DIR
+        value: /data/uploads
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.8-flash
+      - key: GEMINI_FALLBACK_MODEL
+        value: gemini-2.5-flash
+      - key: PASSWORD_HASH_SECRET  # generated once by Render; never change it later
+        generateValue: true
+      - key: TOKEN_TTL_HOURS
+        value: "72"
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_NAME
+        value: Loan Officer
+      - key: LOG_LEVEL
+        value: INFO
+
+  # --------------------------------------------------------------- frontend --
+  - type: web
+    name: loan-checker-frontend
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerContext: .
+    dockerfilePath: ./docker/frontend.Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: PORT
+        value: "80"
+      - key: VITE_BACKEND_URL      # build arg: same origin, nginx proxies /api
+        value: /api
+      # nginx forwards /api/* here. If Render gives the backend a different URL,
+      # update this value in the dashboard.
+      - key: BACKEND_UPSTREAM
+        value: https://loan-checker-backend.onrender.com

@@ -33,7 +33,9 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-loan_check}
+      # Set DATABASE_URL in .env to use an external database (e.g. Neon);
+      # otherwise the bundled "db" container is used.
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-loan_check}}
       AUTO_MIGRATE: "true"
       UPLOAD_DIR: /data/uploads
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
@@ -54,13 +56,13 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: ../docker/frontend.Dockerfile
-      additional_contexts:
-        dockerfiles: ./docker
+      context: .
+      dockerfile: docker/frontend.Dockerfile
       args:
         VITE_BACKEND_URL: ${VITE_BACKEND_URL:-/api}
     restart: unless-stopped
+    environment:
+      BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:-http://backend:8000}
     depends_on:
       backend:
         condition: service_healthy
