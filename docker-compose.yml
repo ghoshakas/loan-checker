@@ -1,0 +1,72 @@
+# Loan Checker: full stack (Postgres + FastAPI backend + React frontend on nginx).
+#   cp .env.example .env   # then fill in the secrets
+#   docker compose up -d --build
+#   open http://localhost:8080
+
+name: loan-checker
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-loan_check}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      # 5433 on the host so it doesn't clash with a local Postgres on 5432.
+      - "127.0.0.1:${DB_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/backend.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-loan_check}
+      AUTO_MIGRATE: "true"
+      UPLOAD_DIR: /data/uploads
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      GEMINI_FALLBACK_MODEL: ${GEMINI_FALLBACK_MODEL:-gemini-2.5-flash}
+      PASSWORD_HASH_SECRET: ${PASSWORD_HASH_SECRET:?Set PASSWORD_HASH_SECRET in .env}
+      TOKEN_TTL_HOURS: ${TOKEN_TTL_HOURS:-72}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@loancheck.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
+      ADMIN_NAME: ${ADMIN_NAME:-Loan Officer}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - uploads:/data/uploads
+    ports:
+      # Direct API access (Swagger UI at /docs). The frontend doesn't need it.
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/frontend.Dockerfile
+      additional_contexts:
+        dockerfiles: ./docker
+      args:
+        VITE_BACKEND_URL: ${VITE_BACKEND_URL:-/api}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+
+volumes:
+  pgdata:
+  uploads:
