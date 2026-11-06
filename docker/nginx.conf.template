@@ -16,9 +16,11 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        # Screening calls Gemini (with retries), which can take a while.
-        proxy_read_timeout 180s;
-        proxy_send_timeout 180s;
+        # Screening makes several LLM calls (reading PDFs, retries, fallback
+        # models), which can take several minutes. Keep this above the worst case
+        # so a slow-but-successful request doesn't show up as a 504.
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
     }
 
     # Hashed build assets can be cached for a long time.

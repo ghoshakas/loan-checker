@@ -27,6 +27,10 @@ services:
         value: gemini-3.8-flash
       - key: GEMINI_FALLBACK_MODEL
         value: gemini-2.5-flash
+      - key: META_API_KEY          # backup LLM when Gemini fails; LLM|<id>|<secret>, no quotes
+        sync: false
+      - key: META_MODEL
+        value: Llama-4-Maverick-17B-128E-Instruct-FP8
       - key: PASSWORD_HASH_SECRET  # generated once by Render; never change it later
         generateValue: true
       - key: TOKEN_TTL_HOURS
