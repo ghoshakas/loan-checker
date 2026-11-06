@@ -41,6 +41,10 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
       GEMINI_FALLBACK_MODEL: ${GEMINI_FALLBACK_MODEL:-gemini-2.5-flash}
+      # Backup LLM, tried when Gemini fails. Leave META_API_KEY empty to disable.
+      META_API_KEY: ${META_API_KEY:-}
+      META_MODEL: ${META_MODEL:-Llama-4-Maverick-17B-128E-Instruct-FP8}
+      LLM_PROVIDERS: ${LLM_PROVIDERS:-gemini,meta}
       PASSWORD_HASH_SECRET: ${PASSWORD_HASH_SECRET:?Set PASSWORD_HASH_SECRET in .env}
       TOKEN_TTL_HOURS: ${TOKEN_TTL_HOURS:-72}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@loancheck.local}
